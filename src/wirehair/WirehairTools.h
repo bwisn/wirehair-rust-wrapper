@@ -30,22 +30,22 @@
 #ifndef WIREHAIR_TOOLS_H
 #define WIREHAIR_TOOLS_H
 
-#include "wirehair.h"
+#include <wirehair/wirehair.h>
 #include "gf256.h"
 #include <new> // std::nothrow
 
 // Compiler-specific debug break
 #if defined(_DEBUG) || defined(DEBUG)
-#define CAT_DEBUG
-#ifdef _WIN32
-#define CAT_DEBUG_BREAK() __debugbreak()
+    #define CAT_DEBUG
+    #ifdef _WIN32
+        #define CAT_DEBUG_BREAK() __debugbreak()
+    #else
+        #define CAT_DEBUG_BREAK() __builtin_trap()
+    #endif
+    #define CAT_DEBUG_ASSERT(cond) { if (!(cond)) { CAT_DEBUG_BREAK(); } }
 #else
-#define CAT_DEBUG_BREAK() __builtin_trap()
-#endif
-#define CAT_DEBUG_ASSERT(cond) { if (!(cond)) { CAT_DEBUG_BREAK(); } }
-#else
-#define CAT_DEBUG_BREAK() do {} while (false);
-#define CAT_DEBUG_ASSERT(cond) do {} while (false);
+    #define CAT_DEBUG_BREAK() do {} while (false);
+    #define CAT_DEBUG_ASSERT(cond) do {} while (false);
 #endif
 
 namespace wirehair {
@@ -75,10 +75,10 @@ namespace wirehair {
 #define CAT_ALL_ORIGINAL      /**< Avoid doing calculations for 0 losses -- Requires CAT_COPY_FIRST_N (faster) */
 
 /// Number of heavy rows at the bottom of the matrix
-    static const unsigned kHeavyRows = 6;
+static const unsigned kHeavyRows = 6;
 
 /// Number of heavy columns at the bottom right of the matrix
-    static const unsigned kHeavyCols = 18;
+static const unsigned kHeavyCols = 18;
 
 // If the heavy row/column count changes then we will have to regenerate a new
 // heavy matrix using HeavyRowGenerator.cpp, and all the dense/peel seeds.
@@ -88,26 +88,29 @@ namespace wirehair {
 // PCG PRNG
 
 /// From http://www.pcg-random.org/
-    class PCGRandom {
-    public:
-        void Seed(uint64_t y, uint64_t x = 0) {
-            State = 0;
-            Inc = (y << 1u) | 1u;
-            Next();
-            State += x;
-            Next();
-        }
+class PCGRandom
+{
+public:
+    void Seed(uint64_t y, uint64_t x = 0)
+    {
+        State = 0;
+        Inc = (y << 1u) | 1u;
+        Next();
+        State += x;
+        Next();
+    }
 
-        GF256_FORCE_INLINE uint32_t Next() {
-            const uint64_t oldstate = State;
-            State = oldstate * UINT64_C(6364136223846793005) + Inc;
-            const uint32_t xorshifted = (uint32_t)(((oldstate >> 18) ^ oldstate) >> 27);
-            const uint32_t rot = oldstate >> 59;
-            return (xorshifted >> rot) | (xorshifted << ((uint32_t)(-(int32_t) rot) & 31));
-        }
+    GF256_FORCE_INLINE uint32_t Next()
+    {
+        const uint64_t oldstate = State;
+        State = oldstate * UINT64_C(6364136223846793005) + Inc;
+        const uint32_t xorshifted = (uint32_t)(((oldstate >> 18) ^ oldstate) >> 27);
+        const uint32_t rot = oldstate >> 59;
+        return (xorshifted >> rot) | (xorshifted << ((uint32_t)(-(int32_t)rot) & 31));
+    }
 
-        uint64_t State = 0, Inc = 0;
-    };
+    uint64_t State = 0, Inc = 0;
+};
 
 
 //------------------------------------------------------------------------------
@@ -129,7 +132,7 @@ namespace wirehair {
     This is useful for prime testing, where the algorithm needs to stop testing
     at or before the square root of the number to test.
 */
-    uint16_t FloorSquareRoot16(uint16_t x);
+uint16_t FloorSquareRoot16(uint16_t x);
 
 
 //------------------------------------------------------------------------------
@@ -162,7 +165,7 @@ namespace wirehair {
     If input is above 65521, it will return 0 and assert in debug mode.
     Otherwise it will return the next larger number that is prime.
 */
-    uint16_t NextPrime16(uint16_t n);
+uint16_t NextPrime16(uint16_t n);
 
 
 //------------------------------------------------------------------------------
@@ -182,12 +185,12 @@ namespace wirehair {
 
     Precondition: N != 0
 */
-    void AddInvertibleGF2Matrix(
-            uint64_t *GF256_RESTRICT matrix, ///< Address of upper left word
-            const unsigned offset, ///< Offset in bits to the first sum column
-            const unsigned pitchWords, ///< Pitch of the matrix in words
-            const unsigned n ///< Number of bits in the matrix to generate
-    );
+void AddInvertibleGF2Matrix(
+    uint64_t * GF256_RESTRICT matrix, ///< Address of upper left word
+    const unsigned offset, ///< Offset in bits to the first sum column
+    const unsigned pitchWords, ///< Pitch of the matrix in words
+    const unsigned n ///< Number of bits in the matrix to generate
+);
 
 
 //------------------------------------------------------------------------------
@@ -200,10 +203,10 @@ namespace wirehair {
 
     The deck will contain elements with values between 0 and count - 1.
 */
-    void ShuffleDeck16(
-            PCGRandom &prng,
-            uint16_t *GF256_RESTRICT deck,
-            const uint32_t count);
+void ShuffleDeck16(
+    PCGRandom &prng,
+    uint16_t * GF256_RESTRICT deck,
+    const uint32_t count);
 
 
 //------------------------------------------------------------------------------
@@ -219,27 +222,30 @@ namespace wirehair {
     His common cases all require no additional modulus operation, which
     makes it faster than the rare case that I designed.
 */
-    GF256_FORCE_INLINE void IterateNextColumn(
-            uint16_t &x,      ///< Current column number to mutate
-            const uint16_t b, ///< Non-prime modulus for addition
-            const uint16_t p, ///< Next prime above b (or = b if prime)
-            const uint16_t a  ///< Number to add for Weyl generator
-    ) {
-        x = (x + a) % p;
+GF256_FORCE_INLINE void IterateNextColumn(
+    uint16_t &x,      ///< Current column number to mutate
+    const uint16_t b, ///< Non-prime modulus for addition
+    const uint16_t p, ///< Next prime above b (or = b if prime)
+    const uint16_t a  ///< Number to add for Weyl generator
+)
+{
+    x = (x + a) % p;
 
-        // If the result is in the range [b, p):
-        if (x >= b) {
-            const uint16_t distanceToP = p - x;
+    // If the result is in the range [b, p):
+    if (x >= b)
+    {
+        const uint16_t distanceToP = p - x;
 
-            // If adding again would wrap around:
-            if (a >= distanceToP) {
-                x = a - distanceToP;
-            } else {
-                // Handle rare case where multiple adds are needed
-                x = (((uint32_t) a << 16) - distanceToP) % a;
-            }
+        // If adding again would wrap around:
+        if (a >= distanceToP) {
+            x = a - distanceToP;
+        }
+        else {
+            // Handle rare case where multiple adds are needed
+            x = (((uint32_t)a << 16) - distanceToP) % a;
         }
     }
+}
 
 
 /**
@@ -273,144 +279,152 @@ namespace wirehair {
     However, once N gets much much larger, it is actually very
     beneficial to switch over to weight-2 as a minimum.
 */
-    uint16_t GeneratePeelRowWeight(
-            uint32_t rv, ///< 32-bit random value
-            uint16_t block_count ///< Number of input blocks
-    );
+uint16_t GeneratePeelRowWeight(
+    uint32_t rv, ///< 32-bit random value
+    uint16_t block_count ///< Number of input blocks
+);
 
 
 //------------------------------------------------------------------------------
 // Utility: Peel Matrix Row Parameter Initialization
 
-    struct PeelRowParameters {
-        /// Peeling matrix: Column generator
-        uint16_t PeelCount, PeelFirst, PeelAdd;
+struct PeelRowParameters
+{
+    /// Peeling matrix: Column generator
+    uint16_t PeelCount, PeelFirst, PeelAdd;
 
-        /// Mixing matrix: Column generator
-        uint16_t MixFirst, MixAdd;
+    /// Mixing matrix: Column generator
+    uint16_t MixFirst, MixAdd;
 
-        /// This function generates the PRNG parameters for randomly selecting which
-        /// columns to add into the given row
-        void Initialize(
-                uint32_t row_seed,
-                uint32_t p_seed,
-                uint16_t peel_column_count,
-                uint16_t mix_column_count);
-    };
+    /// This function generates the PRNG parameters for randomly selecting which
+    /// columns to add into the given row
+    void Initialize(
+        uint32_t row_seed,
+        uint32_t p_seed,
+        uint16_t peel_column_count,
+        uint16_t mix_column_count);
+};
 
 
 //------------------------------------------------------------------------------
 // Utility: Peel Row Iterator
 
 /// Generates all of the columns referenced by a row
-    class PeelRowIterator {
-    public:
-        /// Initialize iterator with parameters
-        GF256_FORCE_INLINE PeelRowIterator(
-                const PeelRowParameters &params,
-                uint16_t columnCount,
-                uint16_t columnCountNextPrime) {
-            CAT_DEBUG_ASSERT(columnCountNextPrime >= columnCount);
-            CAT_DEBUG_ASSERT(params.PeelFirst < columnCount);
-            CAT_DEBUG_ASSERT(params.PeelCount > 0);
-            CAT_DEBUG_ASSERT(params.PeelAdd > 0);
-            CAT_DEBUG_ASSERT(columnCount > 0);
-            CAT_DEBUG_ASSERT(params.PeelCount <= CAT_MAX_DENSE_ROWS)
+class PeelRowIterator
+{
+public:
+    /// Initialize iterator with parameters
+    GF256_FORCE_INLINE PeelRowIterator(
+        const PeelRowParameters& params,
+        uint16_t columnCount,
+        uint16_t columnCountNextPrime)
+    {
+        CAT_DEBUG_ASSERT(columnCountNextPrime >= columnCount);
+        CAT_DEBUG_ASSERT(params.PeelFirst < columnCount);
+        CAT_DEBUG_ASSERT(params.PeelCount > 0);
+        CAT_DEBUG_ASSERT(params.PeelAdd > 0);
+        CAT_DEBUG_ASSERT(columnCount > 0);
+        CAT_DEBUG_ASSERT(params.PeelCount <= CAT_MAX_DENSE_ROWS)
 
-            NextColumn = params.PeelFirst;
-            ColumnsRemaining = params.PeelCount - 1;
-            Adder = params.PeelAdd;
-            ColumnCount = columnCount;
-            ColumnCountNextPrime = columnCountNextPrime;
+        NextColumn = params.PeelFirst;
+        ColumnsRemaining = params.PeelCount - 1;
+        Adder = params.PeelAdd;
+        ColumnCount = columnCount;
+        ColumnCountNextPrime = columnCountNextPrime;
+    }
+
+    /// Get current column
+    GF256_FORCE_INLINE uint16_t GetColumn() const
+    {
+        return NextColumn;
+    }
+
+    /// Get the next column.
+    /// Returns true on success.
+    /// Returns false if no more columns remain
+    GF256_FORCE_INLINE bool Iterate()
+    {
+        if (ColumnsRemaining <= 0) {
+            return false;
         }
 
-        /// Get current column
-        GF256_FORCE_INLINE uint16_t GetColumn() const {
-            return NextColumn;
-        }
+        --ColumnsRemaining;
 
-        /// Get the next column.
-        /// Returns true on success.
-        /// Returns false if no more columns remain
-        GF256_FORCE_INLINE bool Iterate() {
-            if (ColumnsRemaining <= 0) {
-                return false;
-            }
+        IterateNextColumn(
+            NextColumn,
+            ColumnCount,
+            ColumnCountNextPrime,
+            Adder);
+        return true;
+    }
 
-            --ColumnsRemaining;
+protected:
+    /// Number of column references remaining in this row
+    uint16_t ColumnsRemaining = 0;
 
-            IterateNextColumn(
-                    NextColumn,
-                    ColumnCount,
-                    ColumnCountNextPrime,
-                    Adder);
-            return true;
-        }
+    /// Next column to output
+    uint16_t NextColumn = 0;
 
-    protected:
-        /// Number of column references remaining in this row
-        uint16_t ColumnsRemaining = 0;
+    /// Weyl generator adder
+    uint16_t Adder = 0;
 
-        /// Next column to output
-        uint16_t NextColumn = 0;
+    /// Number of columns overall
+    uint16_t ColumnCount = 0;
 
-        /// Weyl generator adder
-        uint16_t Adder = 0;
-
-        /// Number of columns overall
-        uint16_t ColumnCount = 0;
-
-        /// Next prime starting at number of columns
-        uint16_t ColumnCountNextPrime = 0;
-    };
+    /// Next prime starting at number of columns
+    uint16_t ColumnCountNextPrime = 0;
+};
 
 
 //------------------------------------------------------------------------------
 // Utility: Row Mix Iterator
 
 /// Generates all of the columns referenced by a row
-    class RowMixIterator {
-    public:
-        /// Initialize iterator with parameters
-        GF256_FORCE_INLINE RowMixIterator(
-                const PeelRowParameters &params,
-                uint16_t columnCount,
-                uint16_t columnCountNextPrime) {
-            CAT_DEBUG_ASSERT(columnCountNextPrime >= columnCount);
-            CAT_DEBUG_ASSERT(params.MixFirst < columnCount);
-            CAT_DEBUG_ASSERT(params.MixAdd > 0);
-            CAT_DEBUG_ASSERT(columnCount > 0);
+class RowMixIterator
+{
+public:
+    /// Initialize iterator with parameters
+    GF256_FORCE_INLINE RowMixIterator(
+        const PeelRowParameters& params,
+        uint16_t columnCount,
+        uint16_t columnCountNextPrime)
+    {
+        CAT_DEBUG_ASSERT(columnCountNextPrime >= columnCount);
+        CAT_DEBUG_ASSERT(params.MixFirst < columnCount);
+        CAT_DEBUG_ASSERT(params.MixAdd > 0);
+        CAT_DEBUG_ASSERT(columnCount > 0);
 
-            uint16_t x = params.MixFirst;
-            Columns[0] = x;
+        uint16_t x = params.MixFirst;
+        Columns[0] = x;
 
-            for (unsigned i = 1; i < kColumnCount; ++i) {
-                IterateNextColumn(
-                        x,
-                        columnCount,
-                        columnCountNextPrime,
-                        params.MixAdd);
+        for (unsigned i = 1; i < kColumnCount; ++i)
+        {
+            IterateNextColumn(
+                x,
+                columnCount,
+                columnCountNextPrime,
+                params.MixAdd);
 
-                Columns[i] = x;
-            }
+            Columns[i] = x;
         }
+    }
 
-        /// Number of output columns
-        static const unsigned kColumnCount = 3;
+    /// Number of output columns
+    static const unsigned kColumnCount = 3;
 
-        /// Output columns
-        uint16_t Columns[kColumnCount];
-    };
+    /// Output columns
+    uint16_t Columns[kColumnCount];
+};
 
 
 //------------------------------------------------------------------------------
 // SIMD-Safe Aligned Memory Allocations
 
 /// Allocate memory and return a pointer aligned to the size used for SIMD ops
-    uint8_t *SIMDSafeAllocate(size_t size);
+uint8_t* SIMDSafeAllocate(size_t size);
 
 /// Free an aligned pointer
-    void SIMDSafeFree(void *ptr);
+void SIMDSafeFree(void* ptr);
 
 
 //------------------------------------------------------------------------------
@@ -418,41 +432,41 @@ namespace wirehair {
 
 /// These tables were lovingly hand-crafted by hard-working indigenous peoples:
 
-    static const unsigned kTinyTableCount = 65; // 0..64
+static const unsigned kTinyTableCount = 65; // 0..64
 
-    static const unsigned kSmallTableCount = 2048 - kTinyTableCount;
+static const unsigned kSmallTableCount = 2048 - kTinyTableCount;
 
 /// This table maps N -> dense row count
-    extern const uint8_t kTinyDenseCounts[kTinyTableCount];
+extern const uint8_t kTinyDenseCounts[kTinyTableCount];
 
 /// This table maps N -> dense seed
-    extern const uint16_t kTinyDenseSeeds[kTinyTableCount];
+extern const uint16_t kTinyDenseSeeds[kTinyTableCount];
 
 /// This table maps (N - kTinyTableCount) -> dense seed
-    extern const uint8_t kSmallDenseSeeds[kSmallTableCount];
+extern const uint8_t kSmallDenseSeeds[kSmallTableCount];
 
 /// This table maps N -> peel seed
-    extern const uint8_t kSmallPeelSeeds[kTinyTableCount + kSmallTableCount];
+extern const uint8_t kSmallPeelSeeds[kTinyTableCount + kSmallTableCount];
 
 
 //------------------------------------------------------------------------------
 // Tables for larger N
 
-    static const unsigned kDenseSeedCount = 100;
+static const unsigned kDenseSeedCount = 100;
 
 /// This table maps from (N / 4) -> dense seed for N >= 2048
-    extern const uint8_t kDenseSeeds[kDenseSeedCount];
+extern const uint8_t kDenseSeeds[kDenseSeedCount];
 
-    static const unsigned kPeelSeedSubdivisions = 2048;
+static const unsigned kPeelSeedSubdivisions = 2048;
 
 /// This table maps from N % kPeelSeedSubdivisions -> peel seed
-    extern const uint8_t kPeelSeeds[kPeelSeedSubdivisions];
+extern const uint8_t kPeelSeeds[kPeelSeedSubdivisions];
 
 
 //------------------------------------------------------------------------------
 // DenseCount
 
-    static const unsigned kMaxDenseCount = 400;
+static const unsigned kMaxDenseCount = 400;
 
 /**
     This function returns the number of dense rows in the matrix given the
@@ -480,7 +494,7 @@ namespace wirehair {
 
     Preconditions: N >= 2 and N <= 64000
 */
-    uint16_t GetDenseCount(unsigned N);
+uint16_t GetDenseCount(unsigned N);
 
 
 //------------------------------------------------------------------------------
@@ -490,7 +504,7 @@ namespace wirehair {
     This function returns the seed to use for the dense rows, given the number
     of input blocks (N) and the count of dense rows provided by GetDenseCount().
 */
-    uint16_t GetDenseSeed(unsigned N, unsigned dense_count);
+uint16_t GetDenseSeed(unsigned N, unsigned dense_count);
 
 
 //------------------------------------------------------------------------------
@@ -499,7 +513,7 @@ namespace wirehair {
 /**
     This function returns the seed to use for the peel rows.
 */
-    uint16_t GetPeelSeed(unsigned N);
+uint16_t GetPeelSeed(unsigned N);
 
 
 } // namespace wirehair
